@@ -1,0 +1,16 @@
+---
+
+watch:
+  - path: /tmp/test/123
+    command:
+      - echo
+      - hello
+      - world
+    container: test-container
+  - path: /tmp/test/abc
+    command:
+      - sh
+      - -xec
+      - |-
+        echo hello world
+    container: test-container

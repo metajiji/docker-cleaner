@@ -1,0 +1,73 @@
+---
+
+project_name: docker-cleaner
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
+      - -X {{ .ProjectName }}/cmd.Program={{ .ProjectName }}
+      - -X {{ .ProjectName }}/cmd.Version={{ .Version }}
+      - -X {{ .ProjectName }}/cmd.Commit={{ .Commit }}
+      - -X {{ .ProjectName }}/cmd.BuildDate={{ .Date }}
+    tags:
+      # - osusergo
+      # - netgo
+      - static_build
+      # - feature
+
+snapshot:
+  name_template: "{{ .Version }}"
+
+dockers:
+  - use: buildx
+    skip_push: auto
+    dockerfile: Dockerfile
+    goos: linux
+    goarch: amd64
+    image_templates:
+      - ghcr.io/metajiji/{{ .ProjectName }}:{{ .Tag }}
+      - ghcr.io/metajiji/{{ .ProjectName }}:latest
+    build_flag_templates:
+      - --pull
+      - --build-arg=APP_BIN_NAME={{ .ProjectName }}
+      - --label=org.opencontainers.image.description=Remove abandoned docker-compose projects
+      - --label=org.opencontainers.image.created={{ .Date }}
+      - --label=org.opencontainers.image.ProjectName={{ .ProjectName }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.source={{ .GitURL }}
+
+# Disable Scoop App Manifest
+scoop:
+  skip_upload: true
+
+# Disable announce
+announce:
+  skip: true
+
+# Disable release
+release:
+  disable: true
+
+# Disable checksum
+checksum:
+  disable: true
+
+# Disable changelog
+changelog:
+  skip: true
+
+# Disable archiving
+archives:
+  - format: binary
