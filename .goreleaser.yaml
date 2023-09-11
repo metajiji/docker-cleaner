@@ -16,10 +16,10 @@ builds:
       - amd64
     ldflags:
       - -s -w
-      - -X {{ .ProjectName }}/cmd.Program={{ .ProjectName }}
-      - -X {{ .ProjectName }}/cmd.Version={{ .Version }}
-      - -X {{ .ProjectName }}/cmd.Commit={{ .Commit }}
-      - -X {{ .ProjectName }}/cmd.BuildDate={{ .Date }}
+      - -X {{ .ProjectName }}/cmd.program={{ .ProjectName }}
+      - -X {{ .ProjectName }}/cmd.version={{ .Version }}
+      - -X {{ .ProjectName }}/cmd.commit={{ .Commit }}
+      - -X {{ .ProjectName }}/cmd.buildDate={{ .Date }}
     tags:
       # - osusergo
       # - netgo
@@ -47,6 +47,8 @@ dockers:
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.source={{ .GitURL }}
+    extra_files:
+      - config.yml.example
 
 # Disable Scoop App Manifest
 scoop:

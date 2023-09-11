@@ -17,6 +17,7 @@ ARG APP_BIN_NAME=exe
 
 COPY --from=base /tmp/rootfs /
 COPY $APP_BIN_NAME /exe
+COPY config.yml.example /$APP_BIN_NAME.yml
 
 WORKDIR /
 

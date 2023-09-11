@@ -1,16 +1,21 @@
 ---
 
-watch:
-  - path: /tmp/test/123
-    command:
-      - echo
-      - hello
-      - world
-    container: test-container
-  - path: /tmp/test/abc
-    command:
-      - sh
-      - -xec
-      - |-
-        echo hello world
-    container: test-container
+# Golang duration format https://pkg.go.dev/time#ParseDuration
+sync_frequency: 10s
+
+# Created TTL duration
+container_ttl_created: 720h
+#container_ttl_created: 508h3m
+
+# One of labels should match
+match_containers_labels_regex:
+  com.docker.compose.project.working_dir:
+    - ^/opt/reviews/.+
+    - ^/opt/project1/reviews/.+
+    - ^/opt/project2/reviews/.+
+    - ^/home/.+/docker-compose/traefik-ingress
+    - ^/home/.+/docker-compose/grafana-agent
+  com.docker.compose.project:
+    - ^traefik-ingress$
+
+# exclude_containers_regex: []

@@ -2,36 +2,60 @@ package config
 
 import (
 	"log"
-	"os"
+	"regexp"
+	"time"
 
-	"gopkg.in/yaml.v3"
+	"github.com/spf13/viper"
 )
 
-type Config struct {
-	Watch []WatchedFile `yaml:"watch"`
+var (
+	Viper     = viper.NewWithOptions(viper.KeyDelimiter("::"))
+	Config    config
+	CheckMode bool
+)
+
+type config struct {
+	SyncFrequency              time.Duration
+	ContainerTtlCreated        time.Duration
+	MatchContainersLabelsRegex map[string][]*regexp.Regexp
+	//ExcludeContainersRegex []string `yaml:"excludeContainersRegex"`
 }
 
-type WatchedFile struct {
-	Path      string   `yaml:"path"`
-	Command   []string `yaml:"command"`
-	Container string   `yaml:"container"`
-}
+func FromViperConfig() {
+	Viper.SetEnvPrefix("DC")
+	Viper.AutomaticEnv()
+	Viper.SetConfigType("yaml")
+	Viper.SetConfigFile(Viper.GetString("config"))
 
-func LoadConfig(path string) Config {
-	cfgFd, err := os.Open(path)
-	if err != nil {
-		log.Println(err)
-		os.Exit(2)
-	}
-	defer cfgFd.Close()
-
-	var cfg Config
-	decoder := yaml.NewDecoder(cfgFd)
-	err = decoder.Decode(&cfg)
-	if err != nil {
-		log.Println(err)
-		os.Exit(2)
+	CheckMode = Viper.GetBool("check")
+	if CheckMode {
+		log.Println("check mode is activated")
 	}
 
-	return cfg
+	_ = Viper.BindEnv("sync_frequency")
+	Viper.SetDefault("sync_frequency", "60s")
+
+	if err := Viper.ReadInConfig(); err == nil {
+		log.Println("using configuration file:", Viper.ConfigFileUsed())
+	} else {
+		log.Fatal("fatal error config file: %w", err)
+	}
+
+	// Fill config struct from Viper object
+	Config.SyncFrequency = Viper.GetDuration("sync_frequency")
+	Config.ContainerTtlCreated = Viper.GetDuration("container_ttl_created")
+
+	// Compile regex patterns and fill Config.MatchContainersLabelsRegex
+	Config.MatchContainersLabelsRegex = make(map[string][]*regexp.Regexp)
+	for key, regexList := range Viper.GetStringMapStringSlice("match_containers_labels_regex") {
+		var regxs []*regexp.Regexp
+		for _, regexStr := range regexList {
+			regx, err := regexp.Compile(regexStr)
+			if err != nil {
+				log.Fatalf("failed to compile regex pattern '%s': %s", regexStr, err)
+			}
+			regxs = append(regxs, regx)
+		}
+		Config.MatchContainersLabelsRegex[key] = regxs
+	}
 }

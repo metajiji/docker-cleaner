@@ -2,26 +2,28 @@ package cmd
 
 import (
 	"fmt"
-	"os"
+	"log"
 	"runtime"
+	"time"
+
+	"docker-cleaner/internal/config"
+	"docker-cleaner/internal/docker"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
-
-// Path to config file
-var configFile string
 
 // Build information. Populated at build-time.
 var (
-	Program   string
-	Version   string
-	Commit    string
-	BuildDate string
-	GoVersion = runtime.Version()
-	GoOS      = runtime.GOOS
-	GoArch    = runtime.GOARCH
+	program   string
+	version   string
+	commit    string
+	buildDate string
+	goVersion = runtime.Version()
+	goOS      = runtime.GOOS
+	goArch    = runtime.GOARCH
 )
+
+// Version format
 var versionFormat = `version %s
   git commit: %s
   build date: %s
@@ -30,46 +32,36 @@ var versionFormat = `version %s
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:     Program,
+	Use:     program,
 	Short:   "Remove abandoned docker-compose projects.",
-	Version: fmt.Sprintf(versionFormat, Version, Commit, BuildDate, GoVersion, GoOS+"/"+GoArch),
+	Version: fmt.Sprintf(versionFormat, version, commit, buildDate, goVersion, goOS+"/"+goArch),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("TODO: Program started...")
+		log.Println("Docker cleaner run with sync_frequency:", config.Config.SyncFrequency)
+		cleanerTicker := time.NewTicker(config.Config.SyncFrequency)
+		for {
+			select {
+			case <-cleanerTicker.C:
+				docker.Cleaner()
+			}
+		}
 	},
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
 
 func init() {
 	rootCmd.SetVersionTemplate("{{.Name}} {{.Version}}\n")
-	rootCmd.PersistentFlags().StringVarP(&configFile, "config-file", "c", Program+".yml", "path to config file")
-	cobra.OnInitialize(initConfig)
-}
 
-func initConfig() {
-	viper.SetConfigType("yaml")
-	viper.SetConfigFile(configFile)
+	flags := rootCmd.Flags()
+	flags.StringP("config", "c", program+".yml", "path to config file")
+	flags.BoolP("check", "C", false, "don't make any changes; instead, try to predict some of the changes that may occur")
 
-	viper.AutomaticEnv()
-	viper.SetEnvPrefix("DC")
-	handleError(viper.BindEnv("API_KEY"))
-	handleError(viper.BindEnv("API_SECRET"))
-	handleError(viper.BindEnv("USERNAME"))
-	handleError(viper.BindEnv("PASSWORD"))
+	// Bind all cmd flags to viper for gather env vars
+	_ = config.Viper.BindPFlags(rootCmd.Flags())
 
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using configuration file: ", viper.ConfigFileUsed())
-	}
-}
-
-// TODO Remove this
-func handleError(e error) {
-	if e != nil {
-		fmt.Println(e)
-	}
+	cobra.OnInitialize(config.FromViperConfig)
 }
